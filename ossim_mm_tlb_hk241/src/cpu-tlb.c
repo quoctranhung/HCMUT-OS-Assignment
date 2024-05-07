@@ -25,10 +25,16 @@ int tlb_change_all_page_tables_of(struct pcb_t *proc,  struct memphy_struct * mp
   return 0;
 }
 
-int tlb_flush_tlb_of(struct pcb_t *proc, struct memphy_struct * mp)
-{
-  /* TODO flush tlb cached*/
 
+int tlb_flush_tlb_of(struct pcb_t *proc, struct memphy_struct *mp) {
+   // printf("Proc %d in tlbflush\n", proc->pid);
+  if(mp == NULL){
+    return -1;
+  }
+  int size_tlb = mp->maxsz;
+  for(int i = 0; i < size_tlb; i++){
+    mp->storage[i]  = -1;
+  }
   return 0;
 }
 
@@ -39,15 +45,33 @@ int tlb_flush_tlb_of(struct pcb_t *proc, struct memphy_struct * mp)
  */
 int tlballoc(struct pcb_t *proc, uint32_t size, uint32_t reg_index)
 {
+   //printf("Proc %d in tlballoc size: %d at register: %d\n", proc->pid, size,reg_index);
   int addr, val;
 
   /* By default using vmaid = 0 */
   val = __alloc(proc, 0, reg_index, size, &addr);
-
+ 
   /* TODO update TLB CACHED frame num of the new allocated page(s)*/
   /* by using tlb_cache_read()/tlb_cache_write()*/
-
+  int page_number = PAGING_PGN(addr);
+  
+  int alloc_size = PAGING_PAGE_ALIGNSZ(size);
+  int numpage = alloc_size / PAGING_PAGESZ;
+  for(int i = 0; i < numpage; i++){
+    uint32_t *fpn = malloc(sizeof(uint32_t));
+    uint32_t pte = pg_getpage(proc->mm, page_number + i,(int*)fpn, proc);
+    tlb_cache_write(proc, proc->tlb, proc->pid, (page_number + i), *fpn);
+  }
+  
   return val;
+}
+
+uint32_t get_base_address(struct pcb_t *proc, uint32_t reg_index) {
+    if (reg_index >= PAGING_MAX_SYMTBL_SZ) 
+    {
+        return 0; 
+    }
+    return proc->mm->symrgtbl[reg_index].rg_start; 
 }
 
 /*pgfree - CPU TLB-based free a region memory
@@ -55,16 +79,28 @@ int tlballoc(struct pcb_t *proc, uint32_t size, uint32_t reg_index)
  *@size: allocated size 
  *@reg_index: memory region ID (used to identify variable in symbole table)
  */
-int tlbfree_data(struct pcb_t *proc, uint32_t reg_index)
-{
+int tlbfree_data(struct pcb_t *proc, uint32_t reg_index) {
+  //printf("Proc %d in tlbfree_data at register: %d \n", proc->pid, reg_index);
   __free(proc, 0, reg_index);
 
   /* TODO update TLB CACHED frame num of freed page(s)*/
   /* by using tlb_cache_read()/tlb_cache_write()*/
+  int start_region = proc->mm->symrgtbl[reg_index].rg_start;
+  int end_region = proc->mm->symrgtbl[reg_index].rg_end;
 
+  int size = end_region - start_region;
+  
+  int pgn = PAGING_PGN(start_region);
+  int deallocate_sz = PAGING_PAGE_ALIGNSZ(size);
+  int freed_pages = deallocate_sz / PAGING_PAGESZ;
+  
+  for(int i = 0; i < freed_pages; i++){
+    uint32_t *fpn = malloc(sizeof(uint32_t));
+    uint32_t pte = pg_getpage(proc->mm, pgn + i, (int*)fpn, proc);
+    tlb_cache_write(proc ,proc->tlb, proc->pid, (pgn + i), *fpn);    
+  }
   return 0;
 }
-
 
 /*tlbread - CPU TLB-based read a region memory
  *@proc: Process executing the instruction
@@ -74,12 +110,16 @@ int tlbfree_data(struct pcb_t *proc, uint32_t reg_index)
  */
 int tlbread(struct pcb_t * proc, uint32_t source,
             uint32_t offset, 	uint32_t destination) 
-{
+{	
+  //printf("Proc %d in read. Source: %d, offset: %d, destination: %d\n", proc->pid, source, offset, destination);
   BYTE data, frmnum = -1;
-	
   /* TODO retrieve TLB CACHED frame num of accessing page(s)*/
   /* by using tlb_cache_read()/tlb_cache_write()*/
   /* frmnum is return value of tlb_cache_read/write value*/
+  int start_region = proc->mm->symrgtbl[source].rg_start + offset;
+  int pgn = PAGING_PGN(start_region);
+  uint32_t fpn_retrieved_from_tlb = 0;
+  frmnum = tlb_cache_read(proc ,proc->tlb, proc->pid, pgn, &fpn_retrieved_from_tlb);
 	
 #ifdef IODUMP
   if (frmnum >= 0)
@@ -91,16 +131,22 @@ int tlbread(struct pcb_t * proc, uint32_t source,
 #ifdef PAGETBL_DUMP
   print_pgtbl(proc, 0, -1); //print max TBL
 #endif
+#ifdef MM_PAGING
   MEMPHY_dump(proc->mram);
+#endif
 #endif
 
   int val = __read(proc, 0, source, offset, &data);
 
-  destination = (uint32_t) data;
-
+  //destination = (uint32_t) data;
+  //printf("Data retrieve in tlbread: %d\n", data);
   /* TODO update TLB CACHED with frame num of recent accessing page(s)*/
   /* by using tlb_cache_read()/tlb_cache_write()*/
-
+  int val2 = __write(proc, 0, destination, 0, data);
+  int start_region2 = proc->mm->symrgtbl[destination].rg_start + 0;
+  //printf("Checking proc->mram->storage[%d] of register %d: %d\n",start_region2,destination,proc->mram->storage[start_region2]);
+  int fpn = pg_getpage(proc->mm, pgn, &fpn, proc);
+  int status = tlb_cache_write(proc, proc->tlb, proc->pid, pgn, fpn);
   return val;
 }
 
@@ -113,8 +159,13 @@ int tlbread(struct pcb_t * proc, uint32_t source,
 int tlbwrite(struct pcb_t * proc, BYTE data,
              uint32_t destination, uint32_t offset)
 {
+  //printf("Proc %d in write. Data: %d, destination: %d, offset %d\n", proc->pid, data, destination, offset);
   int val;
   BYTE frmnum = -1;
+  int start_region = proc->mm->symrgtbl[destination].rg_start + offset;
+  int pgn = PAGING_PGN(start_region);
+  uint32_t fpn_retrieved_from_tlb = 0;
+  frmnum = tlb_cache_read(proc ,proc->tlb, proc->pid, pgn, &fpn_retrieved_from_tlb);
 
   /* TODO retrieve TLB CACHED frame num of accessing page(s))*/
   /* by using tlb_cache_read()/tlb_cache_write()
@@ -134,10 +185,13 @@ int tlbwrite(struct pcb_t * proc, BYTE data,
 #endif
 
   val = __write(proc, 0, destination, offset, data);
+  //printf("Checking proc->mram->storage[%d] of register %d: %d\n",start_region,destination,proc->mram->storage[start_region]);
 
   /* TODO update TLB CACHED with frame num of recent accessing page(s)*/
   /* by using tlb_cache_read()/tlb_cache_write()*/
 
+  int fpn = pg_getpage(proc->mm, pgn, &fpn, proc);
+  int status = tlb_cache_write(proc ,proc->tlb, proc->pid, pgn, fpn);
   return val;
 }
 
