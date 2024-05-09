@@ -1,4 +1,3 @@
-
 #include "queue.h"
 #include "sched.h"
 #include <pthread.h>
@@ -25,10 +24,12 @@ int queue_empty(void) {
 
 void init_scheduler(void) {
 #ifdef MLQ_SCHED
-	int i ;
+    int i ;
 
-	for (i = 0; i < MAX_PRIO; i ++)
+	for (i = 0; i < MAX_PRIO; i ++) {
 		mlq_ready_queue[i].size = 0;
+		mlq_ready_queue[i].slot = MAX_PRIO - i;
+	}
 #endif
 	ready_queue.size = 0;
 	run_queue.size = 0;
@@ -44,10 +45,34 @@ void init_scheduler(void) {
  */
 struct pcb_t * get_mlq_proc(void) {
 	struct pcb_t * proc = NULL;
-	/*TODO: get a process from PRIORITY [ready_queue].
-	 * Remember to use lock to protect the queue.
-	 */
-	proc = dequeue(&mlq_ready_queue[0]);
+	pthread_mutex_lock(&queue_lock);
+	int iterator;
+	int num_empty_queue = 0;
+	for (iterator = 0; iterator < MAX_PRIO; iterator++) {
+		if (!empty(&mlq_ready_queue[iterator])) {
+			if (mlq_ready_queue[iterator].slot > 0) {
+				proc = dequeue(&mlq_ready_queue[iterator]);
+				break;
+			}
+		}
+		else num_empty_queue++;
+	}
+	if (num_empty_queue == MAX_PRIO) goto rt_proc;
+	if (iterator == MAX_PRIO) {
+		for (int i = 0; i < MAX_PRIO; i++) {
+			mlq_ready_queue[i].slot = MAX_PRIO - i;
+		}
+		iterator = 0;
+		while (iterator < MAX_PRIO) {
+			if (!empty(&mlq_ready_queue[iterator])) {
+				proc = dequeue(&mlq_ready_queue[iterator]);
+				break;
+			}
+			iterator++;
+		}
+	}
+	rt_proc:
+	pthread_mutex_unlock(&queue_lock);
 	return proc;	
 }
 
@@ -77,9 +102,9 @@ void add_proc(struct pcb_t * proc) {
 #else
 struct pcb_t * get_proc(void) {
 	struct pcb_t * proc = NULL;
-	/*TODO: get a process from [ready_queue].
-	 * Remember to use lock to protect the queue.
-	 * */
+	pthread_mutex_lock(&queue_lock);
+	proc = dequeue(&ready_queue);
+	pthread_mutex_unlock(&queue_lock);
 	return proc;
 }
 
