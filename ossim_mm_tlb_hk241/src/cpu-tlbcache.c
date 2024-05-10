@@ -38,9 +38,9 @@ int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, BYTE* value)
    for (int i = 0; i < CACHE; i++)
    {
       /* code */
-      if(mp->cache[i].pid == pid && mp->cache[i].pgnum == pgnum)
+      if(mp->cache[i]->pid == pid && mp->cache[i]->pgnum == pgnum)
       {
-         *value = mp->cache[i].data;
+         *value = mp->cache[i]->data;
          return 0;
       }
    }
@@ -63,12 +63,12 @@ int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, BYTE value)
    for (int i = 0; i < CACHE; i++)
    {
       /* code */
-      if(mp->cache[i].valid == 0)
+      if(mp->cache[i]->valid == 0)
       {
-         mp->cache[i].pid = pid;
-         mp->cache[i].valid = 1;
-         mp->cache[i].data = value;
-         mp->cache[i].pgnum = pgnum;
+         mp->cache[i]->pid = pid;
+         mp->cache[i]->valid = 1;
+         mp->cache[i]->data = value;
+         mp->cache[i]->pgnum = pgnum;
          return 0;
       }
    }
@@ -78,10 +78,10 @@ int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, BYTE value)
       /* code */
       mp->cache[i] = mp->cache[i + 1];
    }
-   mp->cache[CACHE - 1].pid = pid;
-   mp->cache[CACHE - 1].pgnum = pgnum;
-   mp->cache[CACHE - 1].data = value;
-   mp->cache[CACHE - 1].valid = 1;
+   mp->cache[CACHE - 1]->pid = pid;
+   mp->cache[CACHE - 1]->pgnum = pgnum;
+   mp->cache[CACHE - 1]->data = value;
+   mp->cache[CACHE - 1]->valid = 1;
    
    return -1;
 }
@@ -132,9 +132,9 @@ int TLBMEMPHY_dump(struct memphy_struct * mp)
    printf("TLB:\n");
    for (int i = 0; i < mp->maxsz; i++)
    {
-      if(mp->cache[i].valid == 1)
+      if(mp->cache[i]->valid == 1)
       {
-         printf("PID: %d\tpage num: %d\tframe num: %d\n", mp->cache[i].pid, mp->cache[i].pgnum, mp->storage[i]);
+         printf("PID: %d\tpage num: %d\tframe num: %d\n", mp->cache[i]->pid, mp->cache[i]->pgnum, mp->storage[i]);
       }
    }
    
@@ -149,15 +149,15 @@ int TLBMEMPHY_dump(struct memphy_struct * mp)
 int init_tlbmemphy(struct memphy_struct *mp, int max_size)
 {
    mp->storage = (BYTE *)malloc(max_size*sizeof(BYTE));
-   mp->storage[max_size - 1] = " ";
-   mp->cache = (struct TLBCache*)malloc((max_size / 16)*sizeof(struct TLBCache));
+   // mp->storage[max_size - 1] = " ";
 
    for (int i = 0; i < (int)(max_size / 16); i++)
    {
-      mp->cache[i].valid = 0;
-      mp->cache[i].pid = -1;
-      mp->cache[i].pgnum = -1;
-      mp->cache[i].data = -1;
+      mp->cache[i] = malloc(sizeof(struct memphy_struct*));
+      mp->cache[i]->valid = 0;
+      mp->cache[i]->pid = -1;
+      mp->cache[i]->pgnum = -1;
+      mp->cache[i]->data = -1;
    }
    
    mp->maxsz = max_size;

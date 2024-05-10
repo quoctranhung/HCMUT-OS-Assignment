@@ -91,12 +91,12 @@ int tlbfree_data(struct pcb_t *proc, uint32_t reg_index)
     for (int i = 0; i < CACHE; i++)
     {
       /* code */
-      if(proc->pid == proc->tlb->cache[i].pid && pgn == proc->tlb->cache[i].pgnum)
+      if(proc->pid == proc->tlb->cache[i]->pid && pgn == proc->tlb->cache[i]->pgnum)
       {
-        proc->tlb->cache[i].valid = 0;
-        proc->tlb->cache[i].data = -1;
-        proc->tlb->cache[i].pid = -1;
-        proc->tlb->cache[i].pgnum = -1;
+        proc->tlb->cache[i]->valid = 0;
+        proc->tlb->cache[i]->data = -1;
+        proc->tlb->cache[i]->pid = -1;
+        proc->tlb->cache[i]->pgnum = -1;
       }
     }
   }
@@ -168,7 +168,6 @@ int tlbwrite(struct pcb_t * proc, BYTE data,
   BYTE frmnum = -1;
   int rg_start = proc->mm->symrgtbl[destination].rg_start + offset;
   int pgn = PAGING_PGN(rg_start);
-  printf("pid: %d, page-num: %d, data: %d\n", proc->pid, pgn, data);
   BYTE fpn = 0; 
   pg_getpage(proc->mm, pgn, &fpn, proc);
   frmnum = tlb_cache_write(proc->tlb, proc->pid, pgn, fpn);

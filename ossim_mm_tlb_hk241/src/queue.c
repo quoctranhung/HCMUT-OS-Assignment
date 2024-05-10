@@ -25,19 +25,6 @@ void enqueue(struct queue_t * q, struct pcb_t * proc) {
 }
 
 struct pcb_t * dequeue(struct queue_t * q) {
-#ifdef MLQ_SCHED
-	// Return process at index = 0;
-	 if (q == NULL || q->size == 0) {
-        perror("Queue is empty or NULL!\n");
-        return NULL;
-    }
-	if (q->size == MAX_QUEUE_SIZE) return;
-	q->proc[q->size] = proc;
-	q->size++;
-        
-}
-
-struct pcb_t * dequeue(struct queue_t * q) {
 	#ifdef MLQ_SCHED
 	// Return process at index = 0;
 	if (empty(q)) return NULL;

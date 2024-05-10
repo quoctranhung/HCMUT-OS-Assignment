@@ -4,7 +4,7 @@
 //#define MM_PAGING
 #define PAGING_MAX_MMSWP 4 /* max number of supported swapped space */
 #define PAGING_MAX_SYMTBL_SZ 30
-
+#define CACHE 4096
 #define PAGING_PAGESZ 256
 #define CACHE_SIZE 256 // kích thước bộ đệm cache là 256 KB
 
@@ -81,7 +81,7 @@ struct framephy_struct {
 struct memphy_struct {
    /* Basic field of data and size */
    BYTE *storage;
-   struct TLBCache* cache;
+   struct TLBCache* cache[CACHE];
    int maxsz;
 
    /* Sequential device fields */ 
