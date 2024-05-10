@@ -105,8 +105,8 @@ int tlbread(struct pcb_t * proc, uint32_t source,
 {	
   BYTE data, frmnum = -1;
   int rg_start = proc->mm->symrgtbl[source].rg_start + offset; // 
-  int pgn = PAGING_PGN(rg_start);
-  int fpn = -1;
+  int pgn = PAGING_PGN(rg_start + 500);
+  BYTE fpn = -1;
   frmnum = tlb_cache_read(proc->tlb, proc->pid, pgn, &fpn);
 	
 #ifdef IODUMP
@@ -124,14 +124,14 @@ int tlbread(struct pcb_t * proc, uint32_t source,
 #endif
 #endif
 int val;
-int off = rg_start;
-  // if(frmnum >= 0)
-  // {
-  //   int phyaddress = (frmnum << (PAGING_ADDR_FPN_HIBIT - 1) + off);
-  //   TLBMEMPHY_read(proc->mram, phyaddress, &data);
-  // }
-  // else
-  // {
+int off = rg_start + 500;
+  if(frmnum >= 0)
+  {
+    int phyaddress = (frmnum << (PAGING_ADDR_FPN_HIBIT - 1) + off);
+    TLBMEMPHY_read(proc->mram, phyaddress, &data);
+  }
+  else
+  {
   val = __read(proc, 0, source, offset, &data);
 
   destination = (uint32_t) data;
@@ -139,7 +139,7 @@ int off = rg_start;
   /* by using tlb_cache_read()/tlb_cache_write()*/
   pg_getpage(proc->mm, pgn, &fpn, proc);
   tlb_cache_write(proc->tlb, proc->pid, pgn, fpn);
-  // }
+  }
   return val;
 }
 
