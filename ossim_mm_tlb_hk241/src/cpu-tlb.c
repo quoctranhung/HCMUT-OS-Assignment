@@ -169,7 +169,7 @@ int tlbwrite(struct pcb_t * proc, BYTE data,
   int rg_start = proc->mm->symrgtbl[destination].rg_start + offset;
   int pgn = PAGING_PGN(rg_start);
   printf("pid: %d, page-num: %d, data: %d\n", proc->pid, pgn, data);
-  BYTE fpn = 0;
+  BYTE fpn = 0; 
   pg_getpage(proc->mm, pgn, &fpn, proc);
   frmnum = tlb_cache_write(proc->tlb, proc->pid, pgn, fpn);
 

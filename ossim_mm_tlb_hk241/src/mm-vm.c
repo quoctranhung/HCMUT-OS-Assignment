@@ -208,7 +208,7 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
 
     enlist_pgn_node(&caller->mm->fifo_pgn,pgn);
   }
-
+ 
   *fpn = PAGING_FPN(pte);
  
   return 0;

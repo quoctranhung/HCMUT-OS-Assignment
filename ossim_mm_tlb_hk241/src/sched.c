@@ -90,7 +90,7 @@ void add_mlq_proc(struct pcb_t * proc) {
 
 struct pcb_t * get_proc(void) {
 	return get_mlq_proc();
-}
+} 
 
 void put_proc(struct pcb_t * proc) {
 	return put_mlq_proc(proc);
