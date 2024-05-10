@@ -125,12 +125,11 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
  */
 int __free(struct pcb_t *caller, int vmaid, int rgid)
 {
-  struct vm_rg_struct rgnode;
-
+  struct vm_rg_struct rgnode = caller->mm->symrgtbl[rgid];
+  struct vm_area_struct *anode = caller->mm->mmap;
+  
   if(rgid < 0 || rgid > PAGING_MAX_SYMTBL_SZ)
     return -1;
-
-  /* TODO: Manage the collect freed region to freerg_list */
 
   /*enlist the obsoleted memory region */
   enlist_vm_freerg_list(caller->mm, rgnode);
@@ -169,20 +168,18 @@ int pgfree_data(struct pcb_t *proc, uint32_t reg_index)
  *@caller: caller
  *
  */
+// hàm lấy chỉ số khung từ ram
 int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
 {
-  uint32_t pte = mm->pgd[pgn];
+  uint32_t pte = mm->pgd[pgn]; // lấy entry theo chỉ số trang
 
-  if (!PAGING_PAGE_PRESENT(pte))
-  { /* Page is not online, make it actively living */
+  if (!PAGING_PAGE_PRESENT(pte)) // nếu trang vẫn còn nằm ở kho và chưa được đưa vào frame
+  {
     int vicpgn, swpfpn;
     int vicfpn;
     uint32_t vicpte;
 
     int tgtfpn = PAGING_SWP(pte); // the target frame storing our variable
-
-    /* TODO: Play with your paging theory here */
-    /* Find victim page */
     find_victim_page(caller->mm, &vicpgn);
     /* Get free frame in MEMSWP */
     MEMPHY_get_freefp(caller->active_mswp, &swpfpn);
@@ -220,12 +217,12 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
  */
 int pg_getval(struct mm_struct *mm, int addr, BYTE *data, struct pcb_t *caller)
 {
-  int pgn = PAGING_PGN(addr);
-  int off = PAGING_OFFST(addr);
+  int pgn = PAGING_PGN(addr); // lấy pagenum của address
+  int off = PAGING_OFFST(addr); // lấy offset
   int fpn;
 
   /* Get the page to MEMRAM, swap from MEMSWAP if needed */
-  if(pg_getpage(mm, pgn, &fpn, caller) != 0) 
+  if(pg_getpage(mm, pgn, &fpn, caller) != 0) // nếu ko lấy được frame
     return -1; /* invalid page access */
 
   int phyaddr = (fpn << PAGING_ADDR_FPN_LOBIT) + off;

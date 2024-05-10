@@ -81,7 +81,7 @@ struct framephy_struct {
 struct memphy_struct {
    /* Basic field of data and size */
    BYTE *storage;
-   struct TLBCache* cache[CACHE];
+   struct TLBCache** cache;
    int maxsz;
 
    /* Sequential device fields */ 

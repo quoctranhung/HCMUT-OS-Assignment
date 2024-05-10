@@ -40,31 +40,24 @@ int tlb_flush_tlb_of(struct memphy_struct *mp)
 int tlballoc(struct pcb_t *proc, uint32_t size, uint32_t reg_index)
 {
   int addr, val;
-
-  /* By default using vmaid = 0 */
-  val = __alloc(proc, 0, reg_index, size, &addr);
- 
-  /* TODO update TLB CACHED frame num of the new allocated page(s)*/
-  /* by using tlb_cache_read()/tlb_cache_write()*/
-  BYTE fpn = -1;
-  int rg_start = proc->mm->symrgtbl[reg_index].rg_start;
+  val = __alloc(proc, 0, reg_index, size, &addr); // cấp phân vùng có kích thước là size, trả về địa chỉ của phân vùng vừa cấp
+  int fpn = -1;
+  int rg_start = proc->mm->symrgtbl[reg_index].rg_start; // lấy địa chỉ bắt đầu của phân vùng ảo thứ reg_index
   int rg_end = proc->mm->symrgtbl[reg_index].rg_end;
 
-  int limit = rg_end - rg_start;
-  int size_align = PAGING_PAGE_ALIGNSZ(limit); // cấp bộ nhớ làm tròn lên
-  int num_pages = size_align / PAGING_PAGESZ;
+  int limit = rg_end - rg_start; // giới hạn của phân vùng
+  int size_align = PAGING_PAGE_ALIGNSZ(limit); // lấy size cho số khung trang cần thiết
+  int num_pages = size_align / PAGING_PAGESZ; // lấy số lượng khung trang
 
   for(int i = 0; i < num_pages; i++)
   {
-    int pgn = PAGING_PGN(rg_start + PAGING_PAGESZ * i);
-    pg_getpage(proc->mm, pgn, &fpn, proc);
+    int pgn = PAGING_PGN(rg_start + PAGING_PAGESZ * i); // số trang
+    pg_getpage(proc->mm, pgn, &fpn, proc); // lấy đia chỉ khung trang thông qua số trang
     for (int i = 0; i < CACHE; i++)
     {
-      /* code */
-      tlb_cache_write(proc->tlb, proc->pid, pgn, fpn);
+      tlb_cache_write(proc->tlb, proc->pid, pgn, fpn); // lưu chỉ số khung trang vào cache
     }
   }
-  
   return val;
 }
 
@@ -75,10 +68,8 @@ int tlballoc(struct pcb_t *proc, uint32_t size, uint32_t reg_index)
  */
 int tlbfree_data(struct pcb_t *proc, uint32_t reg_index) 
 {
-  __free(proc, 0, reg_index);
+  __free(proc, 0, reg_index); // đẩy phân vùng thứ reg_index vào list free
 
-  /* TODO update TLB CACHED frame num of freed page(s)*/
-  /* by using tlb_cache_read()/tlb_cache_write()*/
   int rg_start = proc->mm->symrgtbl[reg_index].rg_start;
   int rg_end = proc->mm->symrgtbl[reg_index].rg_end;
 
@@ -87,7 +78,7 @@ int tlbfree_data(struct pcb_t *proc, uint32_t reg_index)
   int size_align = PAGING_PAGE_ALIGNSZ(limit);
   int num_pages = size_align / PAGING_PAGESZ;
   for(int i = 0; i < num_pages; i++){
-    int pgn = PAGING_PGN(rg_start + PAGING_PAGESZ * i);
+    int pgn = PAGING_PGN(rg_start + PAGING_PAGESZ * i); // xóa các trang thuộc phân vùng đã bị xóa ra khỏi cache
     for (int i = 0; i < CACHE; i++)
     {
       /* code */
@@ -113,12 +104,9 @@ int tlbread(struct pcb_t * proc, uint32_t source,
             uint32_t offset, 	uint32_t destination) 
 {	
   BYTE data, frmnum = -1;
-  /* TODO retrieve TLB CACHED frame num of accessing page(s)*/
-  /* by using tlb_cache_read()/tlb_cache_write()*/
-  /* frmnum is return value of tlb_cache_read/write value*/
-  int rg_start = proc->mm->symrgtbl[source].rg_start + offset; // địa chỉ bắt đầu đọc
-  int pgn = PAGING_PGN(rg_start + 500);
-  BYTE fpn = -1;
+  int rg_start = proc->mm->symrgtbl[source].rg_start + offset; // 
+  int pgn = PAGING_PGN(rg_start);
+  int fpn = -1;
   frmnum = tlb_cache_read(proc->tlb, proc->pid, pgn, &fpn);
 	
 #ifdef IODUMP
@@ -136,14 +124,14 @@ int tlbread(struct pcb_t * proc, uint32_t source,
 #endif
 #endif
 int val;
-int off = rg_start + 500;
-  if(frmnum >= 0)
-  {
-    int phyaddress = (frmnum << (PAGING_ADDR_FPN_HIBIT - 1) + off);
-    TLBMEMPHY_read(proc->mram, phyaddress, &data);
-  }
-  else
-  {
+int off = rg_start;
+  // if(frmnum >= 0)
+  // {
+  //   int phyaddress = (frmnum << (PAGING_ADDR_FPN_HIBIT - 1) + off);
+  //   TLBMEMPHY_read(proc->mram, phyaddress, &data);
+  // }
+  // else
+  // {
   val = __read(proc, 0, source, offset, &data);
 
   destination = (uint32_t) data;
@@ -151,7 +139,7 @@ int off = rg_start + 500;
   /* by using tlb_cache_read()/tlb_cache_write()*/
   pg_getpage(proc->mm, pgn, &fpn, proc);
   tlb_cache_write(proc->tlb, proc->pid, pgn, fpn);
-  }
+  // }
   return val;
 }
 

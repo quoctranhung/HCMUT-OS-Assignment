@@ -25,11 +25,11 @@ int init_pte(uint32_t *pte,
         return -1; // Invalid setting
 
       /* Valid setting with FPN */
-      SETBIT(*pte, PAGING_PTE_PRESENT_MASK);
-      CLRBIT(*pte, PAGING_PTE_SWAPPED_MASK);
-      CLRBIT(*pte, PAGING_PTE_DIRTY_MASK);
+      SETBIT(*pte, PAGING_PTE_PRESENT_MASK); // đặt bit 31 = 1
+      CLRBIT(*pte, PAGING_PTE_SWAPPED_MASK); // đặt bit 30 = 0
+      CLRBIT(*pte, PAGING_PTE_DIRTY_MASK); // đặt bit 28 = 0
 
-      SETVAL(*pte, fpn, PAGING_PTE_FPN_MASK, PAGING_PTE_FPN_LOBIT); 
+      SETVAL(*pte, fpn, PAGING_PTE_FPN_MASK, PAGING_PTE_FPN_LOBIT); // chỉ sổ frame phy vào pte
     } else { // page swapped
       SETBIT(*pte, PAGING_PTE_PRESENT_MASK);
       SETBIT(*pte, PAGING_PTE_SWAPPED_MASK);
@@ -51,11 +51,11 @@ int init_pte(uint32_t *pte,
  */
 int pte_set_swap(uint32_t *pte, int swptyp, int swpoff)
 {
-  SETBIT(*pte, PAGING_PTE_PRESENT_MASK);
-  SETBIT(*pte, PAGING_PTE_SWAPPED_MASK);
+  SETBIT(*pte, PAGING_PTE_PRESENT_MASK); // bit 31 = 1
+  SETBIT(*pte, PAGING_PTE_SWAPPED_MASK); // bit 30 = 1
 
-  SETVAL(*pte, swptyp, PAGING_PTE_SWPTYP_MASK, PAGING_PTE_SWPTYP_LOBIT);
-  SETVAL(*pte, swpoff, PAGING_PTE_SWPOFF_MASK, PAGING_PTE_SWPOFF_LOBIT);
+  SETVAL(*pte, swptyp, PAGING_PTE_SWPTYP_MASK, PAGING_PTE_SWPTYP_LOBIT); // chỉnh bit type
+  SETVAL(*pte, swpoff, PAGING_PTE_SWPOFF_MASK, PAGING_PTE_SWPOFF_LOBIT); // chỉnh bit offset của swap
 
   return 0;
 }
@@ -67,10 +67,10 @@ int pte_set_swap(uint32_t *pte, int swptyp, int swpoff)
  */
 int pte_set_fpn(uint32_t *pte, int fpn)
 {
-  SETBIT(*pte, PAGING_PTE_PRESENT_MASK);
-  CLRBIT(*pte, PAGING_PTE_SWAPPED_MASK);
+  SETBIT(*pte, PAGING_PTE_PRESENT_MASK); // bit 31 = 1
+  CLRBIT(*pte, PAGING_PTE_SWAPPED_MASK); // bit 30 = 0
 
-  SETVAL(*pte, fpn, PAGING_PTE_FPN_MASK, PAGING_PTE_FPN_LOBIT); 
+  SETVAL(*pte, fpn, PAGING_PTE_FPN_MASK, PAGING_PTE_FPN_LOBIT); // gán giá trị của fpn cho 12 bit đầu
 
   return 0;
 }
@@ -87,43 +87,33 @@ int vmap_page_range(struct pcb_t *caller, // process call
 {                                         // no guarantee all given pages are mapped
   struct framephy_struct *fpit;
   int fpn;
-  int pgit = 0;
-  int pgn = PAGING_PGN(addr);
+  int pgn = PAGING_PGN(addr); // tính chỉ số của entry thông qua addr
 
-  ret_rg->rg_end = ret_rg->rg_start = addr; // at least the very first space is usable
+  ret_rg->rg_end = ret_rg->rg_start = addr; // set cái giới hạn phân vùng
   /* TODO map range of frame to address space
-   *      [addr to addr + pgnum*PAGING_PAGESZ
+   *      [addr to addr + pgnum*PAGING_PAGESZ // đây là kích thước của vùng ảo có địa chỉ là address, start là addr và end là addr + pgnum*PAGING_PAGESZ
    *      in page table caller->mm->pgd[]
    */
-
-  /* Tracking for later page replacement activities (if needed)
-   * Enqueue new usage page */
-  // enlist_pgn_node(&caller->mm->fifo_pgn, pgn+pgit);
-
-  fpit = frames;
+  fpit = frames; // ds các khung vật lý
   uint32_t *pte = malloc(sizeof(uint32_t));
-  init_pte(pte, 1, 1, 0, 0, 0, 0);
-  for (; pgit < pgnum; pgit++)
+  init_pte(pte, 1, 1, 0, 0, 0, 0); // tạo 1 table entry mới
+  for (int pgit = 0; pgit < pgnum; pgit++) // đẩy các thông tin của trang vào trang toàn cục và đẩy chỉ số trang vào bộ đệm (nếu có)
   {
-    // uint32_t *pte = malloc(sizeof(uint32_t));
-    // init_pte(pte, 1, 1, 0, 0, 0, 0);
-    fpn = fpit->fpn;
-    printf("Free frame is: %d\n", fpn);
+    fpn = fpit->fpn; // lấy chỉ số mảng frame number
     pte_set_swap(pte, 0, 0);
-    pte_set_fpn(pte, fpn);
-    caller->mm->pgd[pgn + pgit] = *pte;
-    int tfpn;
+    pte_set_fpn(pte, fpn); // gán chỉ số khung trang cho 12 bit đầu của entry
+    caller->mm->pgd[pgn + pgit] = *pte; // gán thông tin của khung trang cho trang thứ pgn + pgit trong vùng ảo 
 #ifdef CPU_TLB
-    tlb_cache_write(caller->tlb, caller->pid, pgn + pgit, 0, fpn);
+    tlb_cache_write(caller->tlb, caller->pid, pgn + pgit, 0, fpn); // lưu chỉ số khung trang vào ổ đệm
 #endif
-    tfpn = PAGING_FPN(caller->mm->pgd[pgn + pgit]);
-    ret_rg->rg_end += PAGING_PAGESZ;
-    fpit = fpit->fp_next;
-    enlist_pgn_node(&caller->mm->fifo_pgn, pgn + pgit);
+    ret_rg->rg_end += PAGING_PAGESZ; // tăng kích thước phân vùng ảo cần lưu frame lên
+    fpit = fpit->fp_next; // chuyển qua frame tiếp theo cần ánh xạ vào 
+    enlist_pgn_node(&caller->mm->fifo_pgn, pgn + pgit); // đẩy trang số pgn + pgit vào vị trí đầu tiên của fifo_pgn
   }
   free(pte);
-  caller->mram->used_fp_list = frames;
-
+  caller->mram->used_fp_list = frames; // các khung vật lý được lưu vào ram
+  // và các chỉ số truy xuất frame được lưu vào tlb để ánh xạ qua ram
+  // các thông tin của frame được lưu vào trong pgd (trang toàn cục bao gồm các pte)
   return 0;
 }
 

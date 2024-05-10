@@ -34,10 +34,8 @@
 int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, BYTE* value)
 {
    if(mp == NULL || value == NULL) return -1;
-   int idx = pgnum % mp->maxsz;
    for (int i = 0; i < CACHE; i++)
    {
-      /* code */
       if(mp->cache[i]->pid == pid && mp->cache[i]->pgnum == pgnum)
       {
          *value = mp->cache[i]->data;
@@ -62,7 +60,7 @@ int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, BYTE value)
    }
    for (int i = 0; i < CACHE; i++)
    {
-      /* code */
+      // nếu như chưa có giá trị trong vị trí i của ổ đệm
       if(mp->cache[i]->valid == 0)
       {
          mp->cache[i]->pid = pid;
@@ -72,10 +70,9 @@ int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, BYTE value)
          return 0;
       }
    }
-   // flush theo fifo
+   // nếu đã full ổ đệm thì flush theo fifo
    for (int i = 0; i < CACHE - 1; i++)
    {
-      /* code */
       mp->cache[i] = mp->cache[i + 1];
    }
    mp->cache[CACHE - 1]->pid = pid;
@@ -83,7 +80,7 @@ int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, BYTE value)
    mp->cache[CACHE - 1]->data = value;
    mp->cache[CACHE - 1]->valid = 1;
    
-   return -1;
+   return 0;
 }
 
 /*
@@ -129,8 +126,8 @@ int TLBMEMPHY_write(struct memphy_struct * mp, int addr, BYTE data)
 
 int TLBMEMPHY_dump(struct memphy_struct * mp)
 {
-   printf("TLB:\n");
-   for (int i = 0; i < mp->maxsz; i++)
+   printf("Dump TLB:\n");
+   for (int i = 0; i < CACHE; i++)
    {
       if(mp->cache[i]->valid == 1)
       {
@@ -149,11 +146,10 @@ int TLBMEMPHY_dump(struct memphy_struct * mp)
 int init_tlbmemphy(struct memphy_struct *mp, int max_size)
 {
    mp->storage = (BYTE *)malloc(max_size*sizeof(BYTE));
-   // mp->storage[max_size - 1] = " ";
-
-   for (int i = 0; i < (int)(CACHE); i++)
+   mp->cache = (struct TLBCache**)malloc(max_size*sizeof(struct TLBCache*));
+   for (int i = 0; i < max_size; i++)
    {
-      mp->cache[i] = malloc(sizeof(struct memphy_struct*));
+      mp->cache[i] = malloc(sizeof(struct TLBCache*));
       mp->cache[i]->valid = 0;
       mp->cache[i]->pid = -1;
       mp->cache[i]->pgnum = -1;
@@ -162,7 +158,6 @@ int init_tlbmemphy(struct memphy_struct *mp, int max_size)
    
    mp->maxsz = max_size;
    mp->rdmflg = 1;
-
    return 0;
 }
 
