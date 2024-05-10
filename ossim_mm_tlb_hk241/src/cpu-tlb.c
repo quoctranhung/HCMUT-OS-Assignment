@@ -105,7 +105,7 @@ int tlbread(struct pcb_t * proc, uint32_t source,
 {	
   BYTE data, frmnum = -1;
   int rg_start = proc->mm->symrgtbl[source].rg_start + offset; // 
-  int pgn = PAGING_PGN(rg_start + 500);
+  int pgn = PAGING_PGN(rg_start);
   BYTE fpn = -1;
   frmnum = tlb_cache_read(proc->tlb, proc->pid, pgn, &fpn);
 	
@@ -124,7 +124,7 @@ int tlbread(struct pcb_t * proc, uint32_t source,
 #endif
 #endif
 int val;
-int off = rg_start + 500;
+int off = PAGING_OFFST(rg_start);
   if(frmnum >= 0)
   {
     int phyaddress = (frmnum << (PAGING_ADDR_FPN_HIBIT - 1) + off);
@@ -135,8 +135,6 @@ int off = rg_start + 500;
   val = __read(proc, 0, source, offset, &data);
 
   destination = (uint32_t) data;
-  /* TODO update TLB CACHED with frame num of recent accessing page(s)*/
-  /* by using tlb_cache_read()/tlb_cache_write()*/
   pg_getpage(proc->mm, pgn, &fpn, proc);
   tlb_cache_write(proc->tlb, proc->pid, pgn, fpn);
   }
@@ -160,10 +158,6 @@ int tlbwrite(struct pcb_t * proc, BYTE data,
   pg_getpage(proc->mm, pgn, &fpn, proc);
   frmnum = tlb_cache_write(proc->tlb, proc->pid, pgn, fpn);
 
-  /* TODO retrieve TLB CACHED frame num of accessing page(s))*/
-  /* by using tlb_cache_read()/tlb_cache_write()
-  frmnum is return value of tlb_cache_read/write value*/
-
 #ifdef IODUMP
   if (frmnum >= 0)
     printf("TLB hit at write region=%d offset=%d value=%d\n",
@@ -177,15 +171,14 @@ int tlbwrite(struct pcb_t * proc, BYTE data,
   MEMPHY_dump(proc->mram);
 #endif
 
+int off = PAGING_OFFST(rg_start);
 if(frmnum >= 0)
 {
-  int phyaddress = (frmnum << (PAGING_ADDR_FPN_HIBIT - 1) + offset);
+  int phyaddress = (frmnum << (PAGING_ADDR_FPN_HIBIT - 1) + off);
   TLBMEMPHY_write(proc->mram, phyaddress, data);
 }
 else{
   val = __write(proc, 0, destination, offset, data);
-  /* TODO update TLB CACHED with frame num of recent accessing page(s)*/
-  /* by using tlb_cache_read()/tlb_cache_write()*/
   tlb_cache_write(proc->tlb, proc->pid, pgn, fpn);
   destination = (uint32_t)data;
 }

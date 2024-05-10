@@ -131,7 +131,7 @@ int TLBMEMPHY_dump(struct memphy_struct * mp)
    {
       if(mp->cache[i]->valid == 1)
       {
-         printf("PID: %d\tpage num: %d\tframe num: %d\n", mp->cache[i]->pid, mp->cache[i]->pgnum, mp->storage[i]);
+         printf("PID: %d\tpage num: %d\tframe num: %d\n", mp->cache[i]->pid, mp->cache[i]->pgnum, mp->cache[i]->data);
       }
    }
    
