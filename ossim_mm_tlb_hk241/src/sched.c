@@ -1,3 +1,4 @@
+
 #include "queue.h"
 #include "sched.h"
 #include <pthread.h>
@@ -45,6 +46,10 @@ void init_scheduler(void) {
  */
 struct pcb_t * get_mlq_proc(void) {
 	struct pcb_t * proc = NULL;
+	/*TODO: get a process from PRIORITY [ready_queue].
+	 * Remember to use lock to protect the queue.
+	 * */
+
 	pthread_mutex_lock(&queue_lock);
 	int iterator;
 	int num_empty_queue = 0;
@@ -76,6 +81,8 @@ struct pcb_t * get_mlq_proc(void) {
 	return proc;	
 }
 
+
+
 void put_mlq_proc(struct pcb_t * proc) {
 	pthread_mutex_lock(&queue_lock);
 	enqueue(&mlq_ready_queue[proc->prio], proc);
@@ -102,6 +109,10 @@ void add_proc(struct pcb_t * proc) {
 #else
 struct pcb_t * get_proc(void) {
 	struct pcb_t * proc = NULL;
+
+	/*TODO: get a process from [ready_queue].
+	 * Remember to use lock to protect the queue.
+	 * */
 	pthread_mutex_lock(&queue_lock);
 	proc = dequeue(&ready_queue);
 	pthread_mutex_unlock(&queue_lock);
