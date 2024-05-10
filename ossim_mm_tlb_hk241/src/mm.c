@@ -87,9 +87,9 @@ int vmap_page_range(struct pcb_t *caller, // process call
 {                                         // no guarantee all given pages are mapped
   //uint32_t * pte = malloc(sizeof(uint32_t));
   struct framephy_struct *fpit = malloc(sizeof(struct framephy_struct));
-  //int  fpn;
+  //int  fpn; 
   int pgit = 0;
-  int pgn = PAGING_PGN(addr);
+  int pgn = PAGING_PGN(addr); 
 
   ret_rg->rg_end = ret_rg->rg_start = addr; // at least the very first space is usable
 

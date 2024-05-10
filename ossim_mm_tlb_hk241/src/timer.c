@@ -91,7 +91,7 @@ void detach_event(struct timer_id_t * event) {
 	pthread_cond_signal(&event->event_cond);
 	pthread_mutex_unlock(&event->event_lock);
 }
-
+ 
 struct timer_id_t * attach_event() {
 	if (timer_started) {
 		return NULL;

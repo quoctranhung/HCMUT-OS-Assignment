@@ -144,7 +144,7 @@ static void * ld_routine(void * args) {
 	}
 	free(ld_processes.path);
 	free(ld_processes.start_time);
-	done = 1;
+	done = 1; 
 	detach_event(timer_id);
 	pthread_exit(NULL);
 }
