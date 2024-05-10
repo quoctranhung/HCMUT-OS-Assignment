@@ -105,7 +105,7 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
   /* TODO INCREASE THE LIMIT
    * inc_vma_limit(caller, vmaid, inc_sz)
    */
-  if (inc_vma_limit(caller, vmaid, inc_sz) == -1) return -1;
+  inc_vma_limit(caller, vmaid, inc_sz);
 
   /*Successful increase limit */
   caller->mm->symrgtbl[rgid].rg_start = old_sbrk;
@@ -125,13 +125,15 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
  */
 int __free(struct pcb_t *caller, int vmaid, int rgid)
 {
-  struct vm_rg_struct *rgnode = get_symrg_byid(caller->mm, rgid);
+  struct vm_rg_struct rgnode;
 
-  if(rgid < 0 || rgid > PAGING_MAX_SYMTBL_SZ || rgnode == NULL)
+  if(rgid < 0 || rgid > PAGING_MAX_SYMTBL_SZ)
     return -1;
 
   /* TODO: Manage the collect freed region to freerg_list */
-  enlist_vm_freerg_list(caller->mm, *rgnode);
+
+  /*enlist the obsoleted memory region */
+  enlist_vm_freerg_list(caller->mm, rgnode);
 
   return 0;
 }
@@ -170,43 +172,35 @@ int pgfree_data(struct pcb_t *proc, uint32_t reg_index)
 int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
 {
   uint32_t pte = mm->pgd[pgn];
- 
+
   if (!PAGING_PAGE_PRESENT(pte))
   { /* Page is not online, make it actively living */
-    int vicpgn, swpfpn; 
-    int vicfpn;
-    uint32_t vicpte;
+    int vicpgn, swpfpn;
+    //int vicfpn;
+    //uint32_t vicpte;
 
     int tgtfpn = PAGING_SWP(pte);//the target frame storing our variable
 
     /* TODO: Play with your paging theory here */
     /* Find victim page */
-    if (find_victim_page(caller->mm, &vicpgn) == -1) return -1;
-
-    vicpte = mm->pgd[vicpgn]; 
-
-    vicfpn = PAGING_SWP(vicpte);
+    find_victim_page(caller->mm, &vicpgn);
 
     /* Get free frame in MEMSWP */
-    if (MEMPHY_get_freefp(caller->active_mswp, &swpfpn) == -1) return -1;
+    MEMPHY_get_freefp(caller->active_mswp, &swpfpn);
 
 
     /* Do swap frame from MEMRAM to MEMSWP and vice versa*/
     /* Copy victim frame to swap */
-    __swap_cp_page(caller->mram, vicfpn, caller->active_mswp, swpfpn);
+    //__swap_cp_page();
     /* Copy target frame from swap to mem */
-    __swap_cp_page(caller->active_mswp, tgtfpn, caller->mram, vicfpn);
+    //__swap_cp_page();
 
     /* Update page table */
     //pte_set_swap() &mm->pgd;
-    pte_set_swap(&vicpte, 0, swpfpn);
+
     /* Update its online status of the target page */
     //pte_set_fpn() & mm->pgd[pgn];
-    pte_set_fpn(&pte, vicfpn);
-
-    mm->pgd[pgn] = pte;
-
-    mm->pgd[vicpgn] = vicpte;
+    pte_set_fpn(&pte, tgtfpn);
 
 #ifdef CPU_TLB
     /* Update its online status of TLB (if needed) */
@@ -410,30 +404,10 @@ struct vm_rg_struct* get_vm_area_node_at_brk(struct pcb_t *caller, int vmaid, in
  */
 int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, int vmastart, int vmaend)
 {
-  struct vm_area_struct *vma = caller->mm->mmap;
+  //struct vm_area_struct *vma = caller->mm->mmap;
 
   /* TODO validate the planned memory area is not overlapped */
-  int vmait = 0;
 
-  while (vma != NULL)
-
-  {
-
-    if ((vmait != vmaid ) && (vma->vm_start != vma->vm_end))
-
-    {
-
-      if (OVERLAP(vma->vm_start, vma->vm_end, vmastart, vmaend))
-
-      return -1;
-
-    }
-
-    vma = vma->vm_next;
-
-    vmait++;
-
-  }
   return 0;
 }
 
@@ -478,38 +452,7 @@ int find_victim_page(struct mm_struct *mm, int *retpgn)
   struct pgn_t *pg = mm->fifo_pgn;
 
   /* TODO: Implement the theorical mechanism to find the victim page */
-
-  if (pg == NULL) { 
-
-    return -1;
-
-  }
-
-  if (pg->pg_next == NULL) {
-
-    *retpgn = pg->pgn;
-
-    mm->fifo_pgn = NULL;
-
     free(pg);
-
-  }
-
-  else {
-
-    while (pg->pg_next->pg_next != NULL) {
-
-      pg = pg->pg_next;
-
-    }
-
-    *retpgn = pg->pg_next->pgn;
-
-    free(pg->pg_next);
-
-    pg->pg_next = NULL;
-
-  }
 
   return 0;
 }
@@ -553,12 +496,13 @@ int get_free_vmrg_area(struct pcb_t *caller, int vmaid, int size, struct vm_rg_s
         /*Cloning */
         if (nextrg != NULL)
         {
+          //printf("%lu-%lu-%p\n", rgit->rg_start, rgit->rg_end, rgit->rg_next);
           rgit->rg_start = nextrg->rg_start;
           rgit->rg_end = nextrg->rg_end;
 
           rgit->rg_next = nextrg->rg_next;
 
-          free(nextrg);
+          //free(nextrg);
         }
         else
         { /*End of free list */

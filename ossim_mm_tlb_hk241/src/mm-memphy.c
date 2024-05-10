@@ -112,7 +112,7 @@ int MEMPHY_write(struct memphy_struct * mp, int addr, BYTE data)
 int MEMPHY_format(struct memphy_struct *mp, int pagesz)
 {
     /* This setting come with fixed constant PAGESZ */
-    int numfp = mp->maxsz / pagesz;
+    int numfp = mp->maxsz / pagesz; // 40000/256 = 156
     struct framephy_struct *newfst, *fst;
     int iter = 0;
 

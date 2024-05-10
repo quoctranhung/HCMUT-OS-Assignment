@@ -33,5 +33,5 @@
 #define NBITS16(n) ((n&0xFF00)?(8+NBITS8(n>>8)):(NBITS8(n)))
 #define NBITS32(n) ((n&0xFFFF0000)?(16+NBITS16(n>>16)):(NBITS16(n)))
 #define NBITS(n) (n==0?0:NBITS32(n))
-
+	
 #define EXTRACT_NBITS(nr, h, l) ((nr&GENMASK(h,l)) >> l)
