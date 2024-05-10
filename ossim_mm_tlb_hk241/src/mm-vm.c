@@ -210,7 +210,7 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
   }
 
   *fpn = PAGING_FPN(pte);
-
+ 
   return 0;
 }
 
