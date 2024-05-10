@@ -19,6 +19,7 @@
 
 #include "mm.h"
 #include <stdlib.h>
+#define CACHE 4096
 
 #define init_tlbcache(mp,sz,...) init_memphy(mp, sz, (1, ##__VA_ARGS__))
 
@@ -28,14 +29,22 @@
  *  @pid: process id
  *  @pgnum: page number
  *  @value: obtained value
- */
-int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, BYTE value)
+ */ 
+
+int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, BYTE* value)
 {
-   /* TODO: the identify info is mapped to 
-    *      cache line by employing:
-    *      direct mapped, associated mapping etc.
-    */
-   return 0;
+   if(mp == NULL || value == NULL) return -1;
+   int idx = pgnum % mp->maxsz;
+   for (int i = 0; i < CACHE; i++)
+   {
+      /* code */
+      if(mp->cache[i].pid == pid && mp->cache[i].pgnum == pgnum)
+      {
+         *value = mp->cache[i].data;
+         return 0;
+      }
+   }
+   return -1;
 }
 
 /*
@@ -47,11 +56,34 @@ int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, BYTE value)
  */
 int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, BYTE value)
 {
-   /* TODO: the identify info is mapped to 
-    *      cache line by employing:
-    *      direct mapped, associated mapping etc.
-    */
-   return 0;
+   if(mp == NULL)
+   {
+      return -1;
+   }
+   for (int i = 0; i < CACHE; i++)
+   {
+      /* code */
+      if(mp->cache[i].valid == 0)
+      {
+         mp->cache[i].pid = pid;
+         mp->cache[i].valid = 1;
+         mp->cache[i].data = value;
+         mp->cache[i].pgnum = pgnum;
+         return 0;
+      }
+   }
+   // flush theo fifo
+   for (int i = 0; i < CACHE - 1; i++)
+   {
+      /* code */
+      mp->cache[i] = mp->cache[i + 1];
+   }
+   mp->cache[CACHE - 1].pid = pid;
+   mp->cache[CACHE - 1].pgnum = pgnum;
+   mp->cache[CACHE - 1].data = value;
+   mp->cache[CACHE - 1].valid = 1;
+   
+   return -1;
 }
 
 /*
@@ -97,10 +129,16 @@ int TLBMEMPHY_write(struct memphy_struct * mp, int addr, BYTE data)
 
 int TLBMEMPHY_dump(struct memphy_struct * mp)
 {
-   /*TODO dump memphy contnt mp->storage 
-    *     for tracing the memory content
-    */
-
+   printf("TLB:\n");
+   for (int i = 0; i < mp->maxsz; i++)
+   {
+      if(mp->cache[i].valid == 1)
+      {
+         printf("PID: %d\tpage num: %d\tframe num: %d\n", mp->cache[i].pid, mp->cache[i].pgnum, mp->storage[i]);
+      }
+   }
+   
+   
    return 0;
 }
 
@@ -111,8 +149,18 @@ int TLBMEMPHY_dump(struct memphy_struct * mp)
 int init_tlbmemphy(struct memphy_struct *mp, int max_size)
 {
    mp->storage = (BYTE *)malloc(max_size*sizeof(BYTE));
-   mp->maxsz = max_size;
+   mp->storage[max_size - 1] = " ";
+   mp->cache = (struct TLBCache*)malloc((max_size / 16)*sizeof(struct TLBCache));
 
+   for (int i = 0; i < (int)(max_size / 16); i++)
+   {
+      mp->cache[i].valid = 0;
+      mp->cache[i].pid = -1;
+      mp->cache[i].pgnum = -1;
+      mp->cache[i].data = -1;
+   }
+   
+   mp->maxsz = max_size;
    mp->rdmflg = 1;
 
    return 0;

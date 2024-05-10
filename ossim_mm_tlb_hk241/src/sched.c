@@ -1,4 +1,4 @@
- 
+
 #include "queue.h"
 #include "sched.h"
 #include <pthread.h>
@@ -31,7 +31,6 @@ void init_scheduler(void) {
 		mlq_ready_queue[i].size = 0;
 		mlq_ready_queue[i].slot = MAX_PRIO - i;
 	}
-		
 #endif
 	ready_queue.size = 0;
 	run_queue.size = 0;
@@ -98,7 +97,7 @@ void add_mlq_proc(struct pcb_t * proc) {
 
 struct pcb_t * get_proc(void) {
 	return get_mlq_proc();
-}
+} 
 
 void put_proc(struct pcb_t * proc) {
 	return put_mlq_proc(proc);
@@ -110,6 +109,7 @@ void add_proc(struct pcb_t * proc) {
 #else
 struct pcb_t * get_proc(void) {
 	struct pcb_t * proc = NULL;
+
 	/*TODO: get a process from [ready_queue].
 	 * Remember to use lock to protect the queue.
 	 * */
