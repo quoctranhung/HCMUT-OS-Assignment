@@ -172,10 +172,10 @@ int pgfree_data(struct pcb_t *proc, uint32_t reg_index)
 int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
 {
   uint32_t pte = mm->pgd[pgn];
- 
+
   if (!PAGING_PAGE_PRESENT(pte))
   { /* Page is not online, make it actively living */
-    int vicpgn, swpfpn; 
+    int vicpgn, swpfpn;
     //int vicfpn;
     //uint32_t vicpte;
 
@@ -208,9 +208,9 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
 
     enlist_pgn_node(&caller->mm->fifo_pgn,pgn);
   }
-
+ 
   *fpn = PAGING_FPN(pte);
-
+ 
   return 0;
 }
 
@@ -452,8 +452,7 @@ int find_victim_page(struct mm_struct *mm, int *retpgn)
   struct pgn_t *pg = mm->fifo_pgn;
 
   /* TODO: Implement the theorical mechanism to find the victim page */
-
-  free(pg);
+    free(pg);
 
   return 0;
 }
@@ -497,12 +496,13 @@ int get_free_vmrg_area(struct pcb_t *caller, int vmaid, int size, struct vm_rg_s
         /*Cloning */
         if (nextrg != NULL)
         {
+          //printf("%lu-%lu-%p\n", rgit->rg_start, rgit->rg_end, rgit->rg_next);
           rgit->rg_start = nextrg->rg_start;
           rgit->rg_end = nextrg->rg_end;
 
           rgit->rg_next = nextrg->rg_next;
 
-          free(nextrg);
+          //free(nextrg);
         }
         else
         { /*End of free list */

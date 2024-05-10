@@ -32,6 +32,9 @@ struct mmpaging_ld_args {
 };
 #endif
 
+#ifdef CPU_TLB
+	struct memphy_struct tlb; // khai báo tlb bộ nhớ vật lý
+#endif
 static struct ld_args{
 	char ** path;
 	unsigned long * start_time;
@@ -114,7 +117,7 @@ static void * ld_routine(void * args) {
 #endif
 	int i = 0;
 	printf("ld_routine\n");
-	while (i < num_processes) {
+	while (i < num_processes) { // 8
 		struct pcb_t * proc = load(ld_processes.path[i]);
 #ifdef MLQ_SCHED
 		proc->prio = ld_processes.prio[i];
@@ -129,6 +132,9 @@ static void * ld_routine(void * args) {
 		proc->mswp = mswp;
 		proc->active_mswp = active_mswp;
 #endif
+#ifdef CPU_TLB
+		proc->tlb = &tlb;
+#endif
 		printf("\tLoaded a process at %s, PID: %d PRIO: %ld\n",
 			ld_processes.path[i], proc->pid, ld_processes.prio[i]);
 		add_proc(proc);
@@ -138,7 +144,7 @@ static void * ld_routine(void * args) {
 	}
 	free(ld_processes.path);
 	free(ld_processes.start_time);
-	done = 1;
+	done = 1; 
 	detach_event(timer_id);
 	pthread_exit(NULL);
 }
@@ -149,7 +155,7 @@ static void read_config(const char * path) {
 		printf("Cannot find configure file at %s\n", path);
 		exit(1);
 	}
-	fscanf(file, "%d %d %d\n", &time_slot, &num_cpus, &num_processes);
+	fscanf(file, "%d %d %d\n", &time_slot, &num_cpus, &num_processes); // 2 1 8
 	ld_processes.path = (char**)malloc(sizeof(char*) * num_processes);
 	ld_processes.start_time = (unsigned long*)
 		malloc(sizeof(unsigned long) * num_processes);
@@ -159,13 +165,13 @@ static void read_config(const char * path) {
 	/* We provide here a back compatible with legacy OS simulatiom config file
 	 * In which, it have no addition config line for CPU_TLB
 	 */
-	tlbsz = 0x10000;
+	tlbsz = 0x10000; // !
 #else
 	/* Read input config of TLB size:
 	 * Format:
 	 *        CPU_TLBSZ
 	*/
-	fscanf(file, "%d\n", &tlbsz);
+	fscanf(file, "%d\n", &tlbsz); // đọc dòng 2
 #endif
 #endif
 
@@ -177,8 +183,8 @@ static void read_config(const char * path) {
 	 * for legacy info 
 	 *  [time slice] [N = Number of CPU] [M = Number of Processes to be run]
 	 */
-	memramsz    =  0x100000;
-	memswpsz[0] = 0x1000000;
+	memramsz    =  0x100000; // memory ram size
+	memswpsz[0] = 0x1000000; // memory swap size
 	for(sit = 1; sit < PAGING_MAX_MMSWP; sit++)
 		memswpsz[sit] = 0;
 #else
@@ -186,8 +192,8 @@ static void read_config(const char * path) {
 	 * Format: (size=0 result non-used memswap, must have RAM and at least 1 SWAP)
 	 *        MEM_RAM_SZ MEM_SWP0_SZ MEM_SWP1_SZ MEM_SWP2_SZ MEM_SWP3_SZ
 	*/
-	fscanf(file, "%d\n", &memramsz);
-	for(sit = 0; sit < PAGING_MAX_MMSWP; sit++)
+	fscanf(file, "%d\n", &memramsz); // memramsz = 40000
+	for(sit = 0; sit < PAGING_MAX_MMSWP; sit++) // memswpsz = [1, 0, 0, 0]
 		fscanf(file, "%d", &(memswpsz[sit])); 
 
 	fscanf(file, "\n"); /* Final character */
@@ -196,13 +202,12 @@ static void read_config(const char * path) {
 
 #ifdef MLQ_SCHED
 	ld_processes.prio = (unsigned long*)
-		malloc(sizeof(unsigned long) * num_processes);
+		malloc(sizeof(unsigned long) * num_processes); // !
 #endif
 	int i;
-	for (i = 0; i < num_processes; i++) {
+	for (i = 0; i < num_processes; i++) { // loop 8
 		ld_processes.path[i] = (char*)malloc(sizeof(char) * 100);
-		ld_processes.path[i][0] = '\0';
-		strcat(ld_processes.path[i], "input/proc/");
+		strcat(ld_processes.path[i], "input/proc/"); // "input/proc"
 		char proc[100];
 #ifdef MLQ_SCHED
 		fscanf(file, "%lu %s %lu\n", &ld_processes.start_time[i], proc, &ld_processes.prio[i]);
@@ -221,27 +226,25 @@ int main(int argc, char * argv[]) {
 	}
 	char path[100];
 	path[0] = '\0';
-	strcat(path, "input/");
-	strcat(path, argv[1]);
+	strcat(path, "input/"); // input/
+	strcat(path, argv[1]); // input/argv[1]
 	read_config(path);
 
-	pthread_t * cpu = (pthread_t*)malloc(num_cpus * sizeof(pthread_t));
+	pthread_t * cpu = (pthread_t*)malloc(num_cpus * sizeof(pthread_t)); // 1 luồng
 	struct cpu_args * args =
-		(struct cpu_args*)malloc(sizeof(struct cpu_args) * num_cpus);
+		(struct cpu_args*)malloc(sizeof(struct cpu_args) * num_cpus); // 1 bộ định thời
 	pthread_t ld;
 	
 	/* Init timer */
 	int i;
 	for (i = 0; i < num_cpus; i++) {
 		args[i].timer_id = attach_event();
-		args[i].id = i;
+		args[i].id = i; // 0
 	}
 	struct timer_id_t * ld_event = attach_event();
-	start_timer();
+	start_timer(); 
 #ifdef CPU_TLB
-	struct memphy_struct tlb;
-
-	init_tlbmemphy(&tlb, tlbsz);
+	init_tlbmemphy(&tlb, tlbsz); // khởi tạo bộ đệm tlb có kích thước là tlbsz, cờ rdmflg = 1
 #endif
 
 #ifdef MM_PAGING
@@ -253,19 +256,19 @@ int main(int argc, char * argv[]) {
 
 
 	/* Create MEM RAM */
-	init_memphy(&mram, memramsz, rdmflag);
+	init_memphy(&mram, memramsz, rdmflag); // !
 
 	/* Create all MEM SWAP */ 
 	int sit;
 	for(sit = 0; sit < PAGING_MAX_MMSWP; sit++)
-	       init_memphy(&mswp[sit], memswpsz[sit], rdmflag);
+	       init_memphy(&mswp[sit], memswpsz[sit], rdmflag); // size = 0, rdmflag = 1;
 
 	/* In Paging mode, it needs passing the system mem to each PCB through loader*/
 	struct mmpaging_ld_args *mm_ld_args = malloc(sizeof(struct mmpaging_ld_args));
 
 	mm_ld_args->timer_id = ld_event;
-	mm_ld_args->mram = (struct memphy_struct *) &mram;
-	mm_ld_args->mswp = (struct memphy_struct**) &mswp;
+	mm_ld_args->mram = (struct memphy_struct *) &mram; // maxsz = 40000, rdmflg = 1, cursor = 0
+	mm_ld_args->mswp = (struct memphy_struct**) &mswp; // {maxsz = 0, rdmflg = 1, cursor = 0} * 4
 	mm_ld_args->active_mswp = (struct memphy_struct *) &mswp[0];
 #endif
 
@@ -274,7 +277,7 @@ int main(int argc, char * argv[]) {
 	/* In MM_PAGING employ CPU_TLB mode, it needs passing
 	 * the system tlb to each PCB through loader
 	*/
-	mm_ld_args->tlb = (struct memphy_struct *) &tlb;
+	mm_ld_args->tlb = (struct memphy_struct *) &tlb; // maxsz = 65536, rdmflg = 1, cursor = 0
 #endif
 #endif
 
@@ -283,7 +286,7 @@ int main(int argc, char * argv[]) {
 
 	/* Run CPU and loader */
 #ifdef MM_PAGING
-	pthread_create(&ld, NULL, ld_routine, (void*)mm_ld_args);
+	pthread_create(&ld, NULL, ld_routine, (void*)mm_ld_args); // !
 #else
 	pthread_create(&ld, NULL, ld_routine, (void*)ld_event);
 #endif
