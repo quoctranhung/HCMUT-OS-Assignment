@@ -6,7 +6,7 @@
  * a personal to use and modify the Licensed Source Code for 
  * the sole purpose of studying during attending the course CO2018.
  */
-//#ifdef MM_TLB
+#ifdef MM_TLB
 /*
  * Memory physical based TLB Cache
  * TLB cache module tlb/tlbcache.c
@@ -161,4 +161,4 @@ int init_tlbmemphy(struct memphy_struct *mp, int max_size)
    return 0;
 }
 
-//#endif
+#endif

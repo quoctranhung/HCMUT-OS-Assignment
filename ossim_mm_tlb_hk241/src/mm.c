@@ -1,4 +1,4 @@
-//#ifdef MM_PAGING
+#ifdef MM_PAGING
 /*
  * PAGING based Memory Management
  * Memory management unit mm/mm.c
@@ -356,4 +356,4 @@ int print_pgtbl(struct pcb_t *caller, uint32_t start, uint32_t end)
   return 0;
 }
 
-//#endif
+#endif

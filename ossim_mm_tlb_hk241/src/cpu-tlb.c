@@ -6,12 +6,11 @@
  * a personal to use and modify the Licensed Source Code for 
  * the sole purpose of studying during attending the course CO2018.
  */
-//#ifdef CPU_TLB
+#ifdef CPU_TLB
 /*
  * CPU TLB
  * TLB module cpu/cpu-tlb.c
  */
- 
 #include "mm.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -185,4 +184,4 @@ else{
   return val;
 }
 
-//#endif
+#endif
