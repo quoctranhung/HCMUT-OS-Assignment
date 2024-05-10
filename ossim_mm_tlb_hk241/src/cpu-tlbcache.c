@@ -151,7 +151,7 @@ int init_tlbmemphy(struct memphy_struct *mp, int max_size)
    mp->storage = (BYTE *)malloc(max_size*sizeof(BYTE));
    // mp->storage[max_size - 1] = " ";
 
-   for (int i = 0; i < (int)(max_size / 16); i++)
+   for (int i = 0; i < (int)(CACHE); i++)
    {
       mp->cache[i] = malloc(sizeof(struct memphy_struct*));
       mp->cache[i]->valid = 0;
