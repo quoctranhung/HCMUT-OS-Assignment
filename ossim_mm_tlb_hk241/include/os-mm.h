@@ -1,9 +1,12 @@
 #ifndef OSMM_H
 #define OSMM_H
 
-#define MM_PAGING
+//#define MM_PAGING
 #define PAGING_MAX_MMSWP 4 /* max number of supported swapped space */
 #define PAGING_MAX_SYMTBL_SZ 30
+
+#define PAGING_PAGESZ 256
+#define CACHE_SIZE 256 // kích thước bộ đệm cache là 256 KB
 
 typedef char BYTE;
 typedef uint32_t addr_t;
@@ -68,11 +71,19 @@ struct framephy_struct {
    struct mm_struct* owner;
 };
 
+ struct TLBCache {
+   int pid;
+   int pgnum;
+   int valid;
+   BYTE data;
+};
+
 struct memphy_struct {
    /* Basic field of data and size */
    BYTE *storage;
+   struct TLBCache* cache;
    int maxsz;
-   
+
    /* Sequential device fields */ 
    int rdmflg;
    int cursor;

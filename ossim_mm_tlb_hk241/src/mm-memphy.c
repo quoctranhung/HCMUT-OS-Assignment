@@ -112,7 +112,7 @@ int MEMPHY_write(struct memphy_struct * mp, int addr, BYTE data)
 int MEMPHY_format(struct memphy_struct *mp, int pagesz)
 {
     /* This setting come with fixed constant PAGESZ */
-    int numfp = mp->maxsz / pagesz;
+    int numfp = mp->maxsz / pagesz; // 40000/256 = 156
     struct framephy_struct *newfst, *fst;
     int iter = 0;
 
@@ -168,7 +168,7 @@ int MEMPHY_put_freefp(struct memphy_struct *mp, int fpn)
 {
    struct framephy_struct *fp = mp->free_fp_list;
    struct framephy_struct *newnode = malloc(sizeof(struct framephy_struct));
-
+ 
    /* Create new node with value fpn */
    newnode->fpn = fpn;
    newnode->fp_next = fp;

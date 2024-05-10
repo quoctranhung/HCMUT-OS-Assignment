@@ -91,12 +91,12 @@ void detach_event(struct timer_id_t * event) {
 	pthread_cond_signal(&event->event_cond);
 	pthread_mutex_unlock(&event->event_lock);
 }
-
+ 
 struct timer_id_t * attach_event() {
 	if (timer_started) {
 		return NULL;
 	}else{
-		struct timer_id_container_t * container =
+		struct timer_id_container_t * container = // !
 			(struct timer_id_container_t*)malloc(
 				sizeof(struct timer_id_container_t)		
 			);
@@ -106,7 +106,7 @@ struct timer_id_t * attach_event() {
 		pthread_mutex_init(&container->id.event_lock, NULL);
 		pthread_cond_init(&container->id.timer_cond, NULL);
 		pthread_mutex_init(&container->id.timer_lock, NULL);
-		if (dev_list == NULL) {
+		if (dev_list == NULL) { // !
 			dev_list = container;
 			dev_list->next = NULL;
 		}else{
