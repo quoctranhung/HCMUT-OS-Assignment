@@ -127,7 +127,7 @@ int val;
 int off = PAGING_OFFST(rg_start);
   if(frmnum >= 0)
   {
-    int phyaddress = (frmnum << (PAGING_ADDR_FPN_HIBIT - 1) + off);
+    int phyaddress = (frmnum << PAGING_ADDR_FPN_LOBIT + offset);
     TLBMEMPHY_read(proc->mram, phyaddress, &data);
   }
   else
@@ -174,7 +174,7 @@ int tlbwrite(struct pcb_t * proc, BYTE data,
 int off = PAGING_OFFST(rg_start);
 if(frmnum >= 0)
 {
-  int phyaddress = (frmnum << (PAGING_ADDR_FPN_HIBIT - 1) + off);
+  int phyaddress = (frmnum << PAGING_ADDR_FPN_LOBIT + offset);
   TLBMEMPHY_write(proc->mram, phyaddress, data);
 }
 else{
