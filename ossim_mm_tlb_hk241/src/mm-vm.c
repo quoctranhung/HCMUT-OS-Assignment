@@ -107,10 +107,21 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
    */
   inc_vma_limit(caller, vmaid, inc_sz);
 
+    caller->mm->symrgtbl[rgid].rg_start = old_sbrk + size;
+    caller->mm->symrgtbl[rgid].rg_end = cur_vma->sbrk;
   /*Successful increase limit */
-  caller->mm->symrgtbl[rgid].rg_start = old_sbrk;
-  caller->mm->symrgtbl[rgid].rg_end = old_sbrk + size;
-
+  if(cur_vma->vm_freerg_list->rg_start >= cur_vma->vm_freerg_list->rg_end)
+  {
+    cur_vma->vm_freerg_list->rg_start = old_sbrk + size;
+    cur_vma->vm_freerg_list->rg_start = cur_vma->sbrk;
+  }
+  else
+  {
+    struct vm_rg_struct* free_node = malloc(sizeof(struct vm_rg_struct));
+    free_node->rg_start = old_sbrk + size;
+    free_node->rg_end = cur_vma->sbrk;
+    enlist_vm_freerg_list(caller->mm, *free_node);
+  }
   *alloc_addr = old_sbrk;
 
   return 0;
@@ -126,7 +137,7 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
 int __free(struct pcb_t *caller, int vmaid, int rgid)
 {
   struct vm_rg_struct rgnode = caller->mm->symrgtbl[rgid];
-  struct vm_area_struct *anode = caller->mm->mmap;
+  rgnode.rg_next = NULL;
   
   if(rgid < 0 || rgid > PAGING_MAX_SYMTBL_SZ)
     return -1;
@@ -175,6 +186,7 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
 
   if (!PAGING_PAGE_PRESENT(pte)) // nếu trang vẫn còn nằm ở kho và chưa được đưa vào frame
   {
+    // printf("chưa được đưa vào frame.");
     int vicpgn, swpfpn;
     int vicfpn;
     uint32_t vicpte;
@@ -470,9 +482,7 @@ int find_victim_page(struct mm_struct *mm, int *retpgn)
 int get_free_vmrg_area(struct pcb_t *caller, int vmaid, int size, struct vm_rg_struct *newrg)
 {
   struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
-
   struct vm_rg_struct *rgit = cur_vma->vm_freerg_list;
-
   if (rgit == NULL)
     return -1;
 
@@ -519,6 +529,7 @@ int get_free_vmrg_area(struct pcb_t *caller, int vmaid, int size, struct vm_rg_s
     else
     {
       rgit = rgit->rg_next;	// Traverse next rg
+      if(rgit == caller) break;
     }
   }
 

@@ -40,7 +40,7 @@ int tlballoc(struct pcb_t *proc, uint32_t size, uint32_t reg_index)
 {
   int addr, val;
   val = __alloc(proc, 0, reg_index, size, &addr); // cấp phân vùng có kích thước là size, trả về địa chỉ của phân vùng vừa cấp
-  int fpn = -1;
+  BYTE fpn = -1;
   int rg_start = proc->mm->symrgtbl[reg_index].rg_start; // lấy địa chỉ bắt đầu của phân vùng ảo thứ reg_index
   int rg_end = proc->mm->symrgtbl[reg_index].rg_end;
 
@@ -52,9 +52,10 @@ int tlballoc(struct pcb_t *proc, uint32_t size, uint32_t reg_index)
   {
     int pgn = PAGING_PGN(rg_start + PAGING_PAGESZ * i); // số trang
     pg_getpage(proc->mm, pgn, &fpn, proc); // lấy đia chỉ khung trang thông qua số trang
-    for (int i = 0; i < CACHE; i++)
+    for (int j = 0; j < proc->tlb->maxsz * i / 10; j++)
     {
       tlb_cache_write(proc->tlb, proc->pid, pgn, fpn); // lưu chỉ số khung trang vào cache
+      proc->tlb->cache[i]->valid = 0;
     }
   }
   return val;
@@ -78,7 +79,7 @@ int tlbfree_data(struct pcb_t *proc, uint32_t reg_index)
   int num_pages = size_align / PAGING_PAGESZ;
   for(int i = 0; i < num_pages; i++){
     int pgn = PAGING_PGN(rg_start + PAGING_PAGESZ * i); // xóa các trang thuộc phân vùng đã bị xóa ra khỏi cache
-    for (int i = 0; i < CACHE; i++)
+    for (int i = 0; i < proc->tlb->maxsz; i++)
     {
       /* code */
       if(proc->pid == proc->tlb->cache[i]->pid && pgn == proc->tlb->cache[i]->pgnum)
@@ -120,10 +121,10 @@ int tlbread(struct pcb_t * proc, uint32_t source,
 #endif
 #ifdef MM_PAGING
   MEMPHY_dump(proc->mram);
+  // TLBMEMPHY_dump(proc->tlb);
 #endif
 #endif
 int val;
-int off = PAGING_OFFST(rg_start);
   if(frmnum >= 0)
   {
     int phyaddress = (frmnum << PAGING_ADDR_FPN_LOBIT + offset);
@@ -168,9 +169,9 @@ int tlbwrite(struct pcb_t * proc, BYTE data,
   print_pgtbl(proc, 0, -1); //print max TBL
 #endif
   MEMPHY_dump(proc->mram);
+  // TLBMEMPHY_dump(proc->tlb);
 #endif
 
-int off = PAGING_OFFST(rg_start);
 if(frmnum >= 0)
 {
   int phyaddress = (frmnum << PAGING_ADDR_FPN_LOBIT + offset);

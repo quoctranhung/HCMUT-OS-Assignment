@@ -127,7 +127,7 @@ print_pgtbl: 0 - 512
 00000004: c0000000
 	CPU 1: Put process  4 to run queue
 	CPU 1: Dispatched process  6
-	CPU 0: Processed  2 has finished
+	CPU 0: Processed  2 ha10000000000000000000000000000001s finished
 	CPU 0: Dispatched process  7
 	CPU 3: Put process  8 to run queue
 	CPU 3: Dispatched process  4

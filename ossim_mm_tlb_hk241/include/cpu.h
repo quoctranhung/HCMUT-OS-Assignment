@@ -3,6 +3,8 @@
 #define CPU_H
 
 #include "common.h"
+#include <pthread.h>
+static pthread_mutex_t mutexnew;
 
 /* Execute an instruction of a process. Return 0
  * if the instruction is executed successfully.

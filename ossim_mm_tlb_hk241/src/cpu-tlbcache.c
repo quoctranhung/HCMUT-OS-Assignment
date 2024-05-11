@@ -34,7 +34,7 @@
 int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, BYTE* value)
 {
    if(mp == NULL || value == NULL) return -1;
-   for (int i = 0; i < CACHE; i++)
+   for (int i = 0; i < mp->maxsz; i++)
    {
       if(mp->cache[i]->pid == pid && mp->cache[i]->pgnum == pgnum)
       {
@@ -58,9 +58,10 @@ int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, BYTE value)
    {
       return -1;
    }
-   for (int i = 0; i < CACHE; i++)
+   for (int i = 0; i < mp->maxsz; i++)
    {
       // nếu như chưa có giá trị trong vị trí i của ổ đệm
+      if(mp->cache[i]->pid == pid && mp->cache[i]->pgnum == pgnum && mp->cache[i]->data == value) return -1;
       if(mp->cache[i]->valid == 0)
       {
          mp->cache[i]->pid = pid;
@@ -71,14 +72,14 @@ int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, BYTE value)
       }
    }
    // nếu đã full ổ đệm thì flush theo fifo
-   for (int i = 0; i < CACHE - 1; i++)
+   for (int i = 0; i < mp->maxsz - 1; i++)
    {
       mp->cache[i] = mp->cache[i + 1];
    }
-   mp->cache[CACHE - 1]->pid = pid;
-   mp->cache[CACHE - 1]->pgnum = pgnum;
-   mp->cache[CACHE - 1]->data = value;
-   mp->cache[CACHE - 1]->valid = 1;
+   mp->cache[mp->maxsz - 1]->pid = pid;
+   mp->cache[mp->maxsz - 1]->pgnum = pgnum;
+   mp->cache[mp->maxsz - 1]->data = value;
+   mp->cache[mp->maxsz - 1]->valid = 1;
    
    return 0;
 }
@@ -126,15 +127,18 @@ int TLBMEMPHY_write(struct memphy_struct * mp, int addr, BYTE data)
 
 int TLBMEMPHY_dump(struct memphy_struct * mp)
 {
+   if(mp == NULL) return -1;
    printf("Dump TLB:\n");
-   for (int i = 0; i < CACHE; i++)
+   for (int i = 0; i < mp->maxsz; i++)
    {
+      if(mp->cache != NULL)
+      {
       if(mp->cache[i]->valid == 1)
       {
          printf("PID: %d\tpage num: %d\tframe num: %d\n", mp->cache[i]->pid, mp->cache[i]->pgnum, mp->cache[i]->data);
       }
+      }
    }
-   
    
    return 0;
 }

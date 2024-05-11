@@ -59,6 +59,7 @@ int run(struct pcb_t * proc) {
 		stat = calc(proc);
 		break;
 	case ALLOC:
+	// printf("Cấp %d BYTE vào vùng ảo %d\n", ins.arg_0, ins.arg_1);
 #ifdef CPU_TLB 
 		stat = tlballoc(proc, ins.arg_0, ins.arg_1);
 #elif defined(MM_PAGING)
@@ -68,6 +69,7 @@ int run(struct pcb_t * proc) {
 #endif
 		break;
 	case FREE:
+	// printf("Xóa vùng ảo %d\n", ins.arg_0);
 #ifdef CPU_TLB
 		stat = tlbfree_data(proc, ins.arg_0);
 #elif defined(MM_PAGING)
@@ -97,6 +99,7 @@ int run(struct pcb_t * proc) {
 	default:
 		stat = 1;
 	}
+
 	return stat;
 
 }

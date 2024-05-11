@@ -5,7 +5,6 @@
 #include "loader.h"
 #include "mm.h"
 
-#include <pthread.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -67,16 +66,20 @@ static void * cpu_routine(void * args) {
                            continue; /* First load failed. skip dummy load */
                         }
 		}else if (proc->pc == proc->code->size) {
+	pthread_mutex_lock(&mutexnew);
 			/* The porcess has finish it job */
 			printf("\tCPU %d: Processed %2d has finished\n",
 				id ,proc->pid);
+	pthread_mutex_unlock(&mutexnew);
 			free(proc);
 			proc = get_proc();
 			time_left = 0;
 		}else if (time_left == 0) {
 			/* The process has done its job in current time slot */
+	pthread_mutex_lock(&mutexnew);
 			printf("\tCPU %d: Put process %2d to run queue\n",
 				id, proc->pid);
+	pthread_mutex_unlock(&mutexnew);
 			put_proc(proc);
 			proc = get_proc();
 		}
@@ -84,7 +87,9 @@ static void * cpu_routine(void * args) {
 		/* Recheck process status after loading new process */
 		if (proc == NULL && done) {
 			/* No process to run, exit */
+	pthread_mutex_lock(&mutexnew);
 			printf("\tCPU %d stopped\n", id);
+	pthread_mutex_unlock(&mutexnew);
 			break;
 		}else if (proc == NULL) {
 			/* There may be new processes to run in
@@ -92,13 +97,17 @@ static void * cpu_routine(void * args) {
 			next_slot(timer_id);
 			continue;
 		}else if (time_left == 0) {
+	pthread_mutex_lock(&mutexnew);
 			printf("\tCPU %d: Dispatched process %2d\n",
 				id, proc->pid);
+	pthread_mutex_unlock(&mutexnew);
 			time_left = time_slot;
 		}
 		
 		/* Run current process */
+	pthread_mutex_lock(&mutexnew);
 		run(proc);
+	pthread_mutex_unlock(&mutexnew);
 		time_left--;
 		next_slot(timer_id);
 	}
@@ -135,8 +144,10 @@ static void * ld_routine(void * args) {
 #ifdef CPU_TLB
 		proc->tlb = &tlb;
 #endif
+pthread_mutex_lock(&mutexnew);
 		printf("\tLoaded a process at %s, PID: %d PRIO: %ld\n",
 			ld_processes.path[i], proc->pid, ld_processes.prio[i]);
+pthread_mutex_unlock(&mutexnew);
 		add_proc(proc);
 		free(ld_processes.path[i]);
 		i++;
@@ -219,6 +230,7 @@ static void read_config(const char * path) {
 }
 
 int main(int argc, char * argv[]) {
+	pthread_mutex_init(&mutexnew, NULL);
 	/* Read config */
 	if (argc != 2) {
 		printf("Usage: os [path to configure file]\n");
@@ -303,6 +315,7 @@ int main(int argc, char * argv[]) {
 
 	/* Stop timer */
 	stop_timer();
+	pthread_mutex_destroy(&mutexnew);
 
 	return 0;
 

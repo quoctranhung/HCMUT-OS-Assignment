@@ -102,6 +102,7 @@ int vmap_page_range(struct pcb_t *caller, // process call
     fpn = fpit->fpn; // lấy chỉ số mảng frame number
     pte_set_swap(pte, 0, 0);
     pte_set_fpn(pte, fpn); // gán chỉ số khung trang cho 12 bit đầu của entry
+    // printf("Tạo entry %08x và gắn vào trang %08ld\n", *pte, pgit*sizeof(uint32_t));
     caller->mm->pgd[pgn + pgit] = *pte; // gán thông tin của khung trang cho trang thứ pgn + pgit trong vùng ảo 
 #ifdef CPU_TLB
     tlb_cache_write(caller->tlb, caller->pid, pgn + pgit, 0, fpn); // lưu chỉ số khung trang vào ổ đệm
@@ -128,14 +129,14 @@ int alloc_pages_range(struct pcb_t *caller, int req_pgnum, struct framephy_struc
 {
   int pgit, fpn;
   struct framephy_struct *newfp_str = malloc(sizeof(struct framephy_struct));
-
+  *frm_lst = newfp_str;
   for(pgit = 0; pgit < req_pgnum; pgit++)
   {
     if(MEMPHY_get_freefp(caller->mram, &fpn) == 0)
    {
      newfp_str->fpn = fpn;
-     newfp_str->fp_next = *frm_lst;
-     *frm_lst = newfp_str;
+     newfp_str->fp_next = malloc(sizeof(struct framephy_struct));
+     newfp_str = newfp_str->fp_next;
    } else {  // ERROR CODE of obtaining somes but not enough frames
     return -1;
    } 
