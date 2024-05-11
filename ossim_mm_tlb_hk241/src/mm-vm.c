@@ -1,3 +1,4 @@
+#include "mm.h"
 #ifdef MM_PAGING
 /*
  * PAGING based Memory Management
@@ -5,7 +6,6 @@
  */
 
 #include "string.h"
-#include "mm.h"
 #include <stdlib.h>
 #include <stdio.h>
 

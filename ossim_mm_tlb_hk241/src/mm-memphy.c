@@ -1,10 +1,10 @@
-//#ifdef MM_PAGING
+#include "mm.h"
+#ifdef MM_PAGING
 /*
  * PAGING based Memory Management
  * Memory physical module mm/mm-memphy.c
  */
 
-#include "mm.h"
 #include <stdlib.h>
 
 /*
@@ -203,5 +203,4 @@ int init_memphy(struct memphy_struct *mp, int max_size, int randomflg)
 
    return 0;
 }
-
-//#endif
+#endif

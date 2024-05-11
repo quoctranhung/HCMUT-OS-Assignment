@@ -6,7 +6,8 @@
  * a personal to use and modify the Licensed Source Code for 
  * the sole purpose of studying during attending the course CO2018.
  */
-#ifdef MM_TLB
+#include "mm.h"
+#ifdef CPU_TLB
 /*
  * Memory physical based TLB Cache
  * TLB cache module tlb/tlbcache.c
@@ -17,7 +18,6 @@
  */
 
 
-#include "mm.h"
 #include <stdlib.h>
 #define CACHE 4096
 
