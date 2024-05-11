@@ -5,9 +5,9 @@
 #define MAX_PRIO 140
 
 #define CPU_TLB
-#define CPUTLB_FIXED_TLBSZ // cờ fixed cpu tlb
+// #define CPUTLB_FIXED_TLBSZ // cờ fixed cpu tlb
 #define MM_PAGING
-// #define MM_FIXED_MEMSZ // cờ fixed ram và swap
+#define MM_FIXED_MEMSZ // cờ fixed ram và swap
 // #define VMDBG 1
 // #define MMDBG 1
 #define IODUMP 1
