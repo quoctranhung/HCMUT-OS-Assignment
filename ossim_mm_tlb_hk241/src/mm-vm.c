@@ -79,6 +79,7 @@ struct vm_rg_struct *get_symrg_byid(struct mm_struct *mm, int rgid)
  */
 int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr)
 {
+  sem_wait(&caller->mm->memlock);
   /*Allocate at the toproof */
   struct vm_rg_struct rgnode;
 
@@ -88,7 +89,7 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
     caller->mm->symrgtbl[rgid].rg_end = rgnode.rg_end;
 
     *alloc_addr = rgnode.rg_start;
-
+     sem_post(&caller->mm->memlock);
     return 0;
   }
 
@@ -107,11 +108,11 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
    */
   cur_vma->sbrk += inc_sz;
   if(inc_vma_limit(caller, vmaid, inc_sz)){
+    printf("Increase limit failed\n");
+    sem_post(&caller->mm->memlock);
     return -1;
   }
-
-    caller->mm->symrgtbl[rgid].rg_start = old_sbrk + size;
-    caller->mm->symrgtbl[rgid].rg_end = cur_vma->sbrk;
+  printf("Increase limit done\n");
   /*Successful increase limit */
   if(cur_vma->vm_freerg_list->rg_start >= cur_vma->vm_freerg_list->rg_end)
   {
@@ -125,6 +126,7 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
     free_node->rg_end = cur_vma->sbrk;
     enlist_vm_freerg_list(caller->mm, *free_node);
   }
+  sem_post(&caller->mm->memlock); 
   *alloc_addr = old_sbrk;
 
   return 0;
@@ -139,15 +141,18 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
  */
 int __free(struct pcb_t *caller, int vmaid, int rgid)
 {
+  sem_wait(&caller->mm->memlock);
   struct vm_rg_struct rgnode = caller->mm->symrgtbl[rgid];
   rgnode.rg_next = NULL;
   
-  if(rgid < 0 || rgid > PAGING_MAX_SYMTBL_SZ)
+  if(rgid < 0 || rgid > PAGING_MAX_SYMTBL_SZ){
+    sem_post(&caller->mm->memlock);
     return -1;
-
+  }
   /*enlist the obsoleted memory region */
   caller->mm->symrgtbl[rgid].rg_start = 0;
   caller->mm->symrgtbl[rgid].rg_end = 0;
+  sem_post(&caller->mm->memlock);
   enlist_vm_freerg_list(caller->mm, rgnode);
 
   return 0;
@@ -205,6 +210,7 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
     /* Copy victim frame to swap */
     vicpte = caller->mm->pgd[vicpgn];
     vicfpn = PAGING_FPN(vicpgn);
+    sem_wait(&caller->mram->memphylock);
     __swap_cp_page(caller->mram, vicfpn, caller->active_mswp, swpfpn);
     /* Copy target frame from swap to mem */
     __swap_cp_page(caller->active_mswp, tgtfpn, caller->mram, vicfpn);
@@ -215,6 +221,7 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
     /* Update its online status of the target page */
     // pte_set_fpn() & mm->pgd[pgn];
     pte_set_fpn(&pte, tgtfpn);
+    sem_post(&caller->mram->memphylock);
 
 #ifdef CPU_TLB
     /* Update its online status of TLB (if needed) */
@@ -243,9 +250,8 @@ int pg_getval(struct mm_struct *mm, int addr, BYTE *data, struct pcb_t *caller)
     return -1; /* invalid page access */
 
   int phyaddr = (fpn << PAGING_ADDR_FPN_LOBIT) + off;
-
   MEMPHY_read(caller->mram,phyaddr, data);
-
+  
   return 0;
 }
 
@@ -267,7 +273,9 @@ int pg_setval(struct mm_struct *mm, int addr, BYTE value, struct pcb_t *caller)
 
   int phyaddr = (fpn << PAGING_ADDR_FPN_LOBIT) + off;
 
+  sem_wait(&caller->mram->memphylock);
   MEMPHY_write(caller->mram,phyaddr, value);
+  sem_post(&caller->mram->memphylock);
 
    return 0;
 }
@@ -449,16 +457,19 @@ int inc_vma_limit(struct pcb_t *caller, int vmaid, int inc_sz)
   int old_end = cur_vma->vm_end;
 
   /*Validate overlap of obtained region */
-  if (validate_overlap_vm_area(caller, vmaid, area->rg_start, area->rg_end) < 0)
+  if (validate_overlap_vm_area(caller, vmaid, area->rg_start, area->rg_end) < 0){
     return -1; /*Overlap and failed allocation */
-
+  }
   /* The obtained vm area (only) 
    * now will be alloc real ram region */
-  cur_vma->vm_end += inc_sz;
+  sem_wait(&caller->mram->memphylock);
   if (vm_map_ram(caller, area->rg_start, area->rg_end, 
-                    old_end, incnumpage , newrg) < 0)
+                    old_end, incnumpage , newrg) < 0){
+    sem_post(&caller->mram->memphylock);
     return -1; /* Map the memory to MEMRAM */
-
+                    }
+  cur_vma->vm_end += inc_sz;
+  sem_post(&caller->mram->memphylock);
   return 0;
 
 }

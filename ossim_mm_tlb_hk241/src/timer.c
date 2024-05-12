@@ -21,9 +21,9 @@ static int timer_stop = 0;
 
 static void * timer_routine(void * args) {
 	while (!timer_stop) {
-		pthread_mutex_lock(&mutexnew);
+		
 		printf("Time slot %3lu\n", current_time());
-		pthread_mutex_unlock(&mutexnew);
+		
 		int fsh = 0;
 		int event = 0;
 		/* Wait for all devices have done the job in current

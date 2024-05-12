@@ -7,6 +7,7 @@
 #define CACHE 4096
 #define PAGING_PAGESZ 256
 #define CACHE_SIZE 256 // kích thước bộ đệm cache là 256 KB
+#include <semaphore.h>
 
 typedef char BYTE;
 typedef uint32_t addr_t;
@@ -58,6 +59,8 @@ struct mm_struct {
 
    /* list of free page */
    struct pgn_t *fifo_pgn;
+   //lock
+   sem_t memlock;
 };
 
 /*
@@ -83,6 +86,8 @@ struct memphy_struct {
    BYTE *storage;
    struct TLBCache** cache;
    int maxsz;
+   
+   sem_t memphylock;
 
    /* Sequential device fields */ 
    int rdmflg;
