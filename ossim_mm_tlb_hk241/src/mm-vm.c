@@ -105,7 +105,10 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
   /* TODO INCREASE THE LIMIT
    * inc_vma_limit(caller, vmaid, inc_sz)
    */
-  inc_vma_limit(caller, vmaid, inc_sz);
+  cur_vma->sbrk += inc_sz;
+  if(inc_vma_limit(caller, vmaid, inc_sz)){
+    return -1;
+  }
 
     caller->mm->symrgtbl[rgid].rg_start = old_sbrk + size;
     caller->mm->symrgtbl[rgid].rg_end = cur_vma->sbrk;
@@ -143,6 +146,8 @@ int __free(struct pcb_t *caller, int vmaid, int rgid)
     return -1;
 
   /*enlist the obsoleted memory region */
+  caller->mm->symrgtbl[rgid].rg_start = 0;
+  caller->mm->symrgtbl[rgid].rg_end = 0;
   enlist_vm_freerg_list(caller->mm, rgnode);
 
   return 0;
@@ -468,8 +473,31 @@ int find_victim_page(struct mm_struct *mm, int *retpgn)
   struct pgn_t *pg = mm->fifo_pgn;
 
   /* TODO: Implement the theorical mechanism to find the victim page */
-    free(pg);
+    if (pg == NULL)
+    {
+      
+        return -1;
+    }
+    if(pg->pg_next == NULL)
+    {
+      
+        *retpgn = pg->pgn;
+        mm->fifo_pgn = NULL;
+      free(pg);
+    }
+    else
+    {
+     
+        while(pg->pg_next->pg_next != NULL)
+        { 
+        pg = pg->pg_next;
+        }
+        
+        *retpgn = pg->pg_next->pgn;
+        free(pg->pg_next);
+        pg->pg_next = NULL;
 
+    }
   return 0;
 }
 
@@ -529,7 +557,6 @@ int get_free_vmrg_area(struct pcb_t *caller, int vmaid, int size, struct vm_rg_s
     else
     {
       rgit = rgit->rg_next;	// Traverse next rg
-      if(rgit == caller) break;
     }
   }
 
